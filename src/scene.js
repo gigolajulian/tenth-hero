@@ -285,6 +285,7 @@ export async function createScene(canvas, onProgress) {
       return locked;
     },
     onLock: null,
+    resize, // the canvas is resized by CSS when it shrinks into the nav card
     debug: { renderer, scene, camera, items },
   };
   return api;

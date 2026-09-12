@@ -1,25 +1,40 @@
 import { createScene } from './scene.js';
+import { SECTIONS, renderPage } from './pages.js';
 
-// placeholder until the client's sections are settled
-const SECTIONS = [
-  { label: 'Origin', teaser: 'A studio working between artefact and instrument.' },
-  { label: 'Studio', teaser: 'Ten years of building objects that outlast their brief.' },
-  { label: 'Contact', teaser: 'Berlin, and wherever the work needs to happen.' },
-];
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const $ = (id) => document.getElementById(id);
 
-const loaderEl = document.getElementById('loader');
-const pctEl = document.getElementById('pct');
-const dotsEl = document.getElementById('dots');
-const labelEl = document.getElementById('label');
-const teaserEl = document.getElementById('teaser');
+const loaderEl = $('loader');
+const pctEl = $('pct');
+const dotsEl = $('dots');
+const labelEl = $('label');
+const teaserEl = $('teaser');
+const cardEl = $('card');
+const cardLabel = $('cardLabel');
+const menuEl = $('menu');
+const menuToggle = $('menuToggle');
+const pageEl = $('page');
+const canvas = $('gl');
 
-const app = await createScene(document.getElementById('gl'), (p) => {
+const app = await createScene(canvas, (p) => {
   pctEl.textContent = Math.round(p) + '%';
 });
 loaderEl.classList.add('done');
+
+/* ── nav dots ─────────────────────────────────────────────────────────────── */
+SECTIONS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.setAttribute('aria-label', s.label);
+  b.addEventListener('pointerenter', () => preview(i));
+  b.addEventListener('pointerleave', () => preview(-1));
+  b.addEventListener('focus', () => preview(i));
+  b.addEventListener('click', () => go('/' + s.slug));
+  dotsEl.append(b);
+});
 requestAnimationFrame(() => dotsEl.classList.add('in'));
 
-function show(i) {
+function preview(i) {
   app.preview(i);
   const s = SECTIONS[i];
   labelEl.textContent = s ? s.label : '';
@@ -27,27 +42,58 @@ function show(i) {
   teaserEl.textContent = s ? s.teaser : '';
   teaserEl.classList.toggle('on', !!s);
 }
+preview(-1);
 
-function sync() {
-  [...dotsEl.children].forEach((b, i) => b.setAttribute('aria-current', String(app.locked === i)));
-  show(app.locked);
-}
-
-SECTIONS.slice(0, app.count).forEach((s, i) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.setAttribute('aria-label', s.label);
-  b.addEventListener('pointerenter', () => show(i));
-  b.addEventListener('pointerleave', () => show(app.locked));
-  b.addEventListener('focus', () => show(i));
-  b.addEventListener('click', () => {
-    app.lock(app.locked === i ? -1 : i);
-    sync();
-  });
-  dotsEl.append(b);
+/* ── menu inside the card ─────────────────────────────────────────────────── */
+menuEl.innerHTML = SECTIONS.map((s) => `<a href="${BASE}/${s.slug}">${s.label}</a>`).join('');
+menuToggle.addEventListener('click', () => {
+  const open = menuEl.hidden;
+  menuEl.hidden = !open;
+  menuToggle.setAttribute('aria-expanded', String(open));
 });
 
-app.onLock = sync;
-show(-1);
+/* ── routing ──────────────────────────────────────────────────────────────────
+   One page with a small router rather than separate documents: the WebGL scene has
+   to survive navigation for the canvas to shrink into the card instead of reloading. */
+function go(path) {
+  history.pushState({}, '', BASE + path);
+  render();
+}
 
-window.__app = app;
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="/"]');
+  if (!a || a.target || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  e.preventDefault();
+  go(a.getAttribute('href').slice(BASE.length) || '/');
+});
+addEventListener('popstate', render);
+
+function render() {
+  const slug = location.pathname.slice(BASE.length).replace(/^\/|\/$/g, '');
+  const section = SECTIONS.find((s) => s.slug === slug);
+
+  cardEl.hidden = !section;
+  canvas.classList.toggle('mini', !!section);
+  pageEl.hidden = !section;
+  document.body.classList.toggle('on-page', !!section);
+  menuEl.hidden = true;
+  menuToggle.setAttribute('aria-expanded', 'false');
+
+  if (section) {
+    cardLabel.textContent = section.label;
+    pageEl.innerHTML = renderPage(section.slug);
+    document.title = `${section.label} | TENTH`;
+    app.lock(SECTIONS.indexOf(section));
+  } else {
+    pageEl.innerHTML = '';
+    document.title = 'TENTH';
+    app.lock(-1);
+  }
+  preview(-1);
+  scrollTo(0, 0);
+}
+
+// the canvas is sized by CSS, so let the element itself tell the renderer
+new ResizeObserver(() => app.resize()).observe(canvas);
+
+render();

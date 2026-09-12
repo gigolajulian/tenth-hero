@@ -24,6 +24,9 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
+      # the router owns /work, /about, /contact; Pages has no server to rewrite them,
+      # so its 404 page serves the app and the router takes it from there
+      - run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -2,6 +2,7 @@
   --bg: #f4f3f1;
   --ink: #101010;
   --mute: #a9a6a1;
+  --rule: #dedbd6;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -15,7 +16,20 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+body.on-page { overflow: auto; }
+
+/* the canvas is full-bleed on home and shrinks into the nav card on a section */
+#gl {
+  position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  display: block; z-index: 1;
+  transition: top .7s cubic-bezier(.22, 1, .36, 1), left .7s cubic-bezier(.22, 1, .36, 1),
+              width .7s cubic-bezier(.22, 1, .36, 1), height .7s cubic-bezier(.22, 1, .36, 1);
+}
+#gl.mini {
+  top: 16px; left: 16px;
+  width: 190px; height: 120px;
+}
 
 /* centred percentage above a hairline rule, as in the reference */
 .loader {
@@ -27,21 +41,21 @@ body {
 }
 .loader::after {
   content: ''; display: block; width: 88px; height: 1px;
-  margin: 7px auto 0; background: #d8d5d0;
+  margin: 7px auto 0; background: var(--rule);
 }
-.loader.done { opacity: 0; pointer-events: none; }
+.loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
 
 .chrome { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 
-/* section teaser line, fades in on dot hover — mirrors the reference */
 .teaser {
   position: absolute; top: 26px; left: 24px; right: 24px;
   max-width: 720px;
-  font-size: clamp(20px, 2.4vw, 30px); line-height: 1.24; letter-spacing: -0.02em;
+  font-size: clamp(20px, 2.4vw, 30px); line-height: 1.24;
   opacity: 0; transform: translateY(4px);
   transition: opacity .45s ease, transform .45s ease;
 }
 .teaser.on { opacity: 1; transform: none; }
+body.on-page .teaser { display: none; }
 
 .credit {
   position: absolute; right: 18px; top: 50%;
@@ -49,15 +63,17 @@ body {
   writing-mode: vertical-rl;
   font-size: 11px; color: var(--mute); letter-spacing: 0;
 }
+body.on-page .credit { display: none; }
 
 .footer { position: absolute; left: 24px; bottom: 26px; }
+body.on-page .footer { display: none; }
 .label { display: block; height: 14px; margin-bottom: 12px; font-size: 11px; color: var(--mute); opacity: 0; transition: opacity .3s ease; }
 .label.on { opacity: 1; }
 
 .dots { display: flex; gap: 12px; pointer-events: auto; }
 .dots button {
   width: 15px; height: 15px; padding: 0; border: 0; border-radius: 50%;
-  background: #dedbd6; cursor: pointer;
+  background: var(--rule); cursor: pointer;
   opacity: 0;
   transition: background .3s ease, transform .3s ease, opacity .5s ease;
 }
@@ -70,9 +86,109 @@ body {
 .dots button:hover, .dots button[aria-current='true'] { background: #6f6b65; }
 .dots button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
-.meta { position: absolute; left: 24px; bottom: 0; opacity: 0; }
+/* ── the nav card that frames the shrunken canvas ─────────────────────────── */
+.card {
+  position: absolute; top: 16px; left: 16px;
+  width: 190px; height: 120px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  pointer-events: auto;
+  z-index: 6;
+}
+.card .icon {
+  position: absolute; display: block;
+  width: 18px; height: 18px; padding: 0; border: 0;
+  background: none; cursor: pointer; color: var(--ink);
+  text-decoration: none;
+}
+.card .menu { top: 4px; left: 5px; }
+.card .menu span {
+  display: block; height: 1px; width: 11px; margin: 3px 0 0 1px; background: #6f6b65;
+}
+.card .close {
+  top: 2px; right: 4px;
+  font-size: 14px; line-height: 18px; text-align: center; color: #6f6b65;
+}
+.card-label {
+  position: absolute; left: 6px; bottom: 4px;
+  font-size: 10px; color: var(--mute); letter-spacing: 0;
+}
+.card .expand { right: 5px; bottom: 5px; width: 10px; height: 10px; }
+.card .expand span { position: absolute; width: 4px; height: 4px; border: 1px solid #6f6b65; }
+.card .expand span:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.card .expand span:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.card .expand span:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.card .expand span:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.menu-list {
+  position: absolute; inset: 0;
+  background: var(--bg);
+  padding: 20px 6px 6px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+/* display:flex above outranks the UA's [hidden] rule, so restate it */
+.menu-list[hidden] { display: none; }
+.menu-list a { font-size: 11px; color: var(--ink); text-decoration: none; letter-spacing: 0; }
+.menu-list a:hover { color: var(--mute); }
+
+/* ── section pages ────────────────────────────────────────────────────────── */
+/* content clears the nav card sideways on wide screens, and below it on narrow */
+.page {
+  position: relative; z-index: 4;
+  padding: 16px 24px 80px 230px;
+  max-width: 1700px;
+}
+.lede {
+  max-width: 760px;
+  margin: 0 0 40px;
+}
+.lede p {
+  margin: 0 0 22px;
+  font-size: clamp(18px, 2vw, 30px); line-height: 1.24;
+}
+.lede p + p { font-size: clamp(15px, 1.2vw, 18px); line-height: 1.45; }
+
+.grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  margin-bottom: 48px;
+}
+.grid.two { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+
+.tile {
+  margin: 0; background: #e6e3df;
+  display: flex; align-items: center; justify-content: center;
+}
+.tile span { font-size: 11px; color: #b3aea7; letter-spacing: 0; }
+.tile.wide { margin: 0 0 48px; }
+
+.offices {
+  display: grid; gap: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  max-width: 1000px;
+}
+.offices address { font-style: normal; display: flex; flex-direction: column; font-size: 15px; line-height: 1.5; }
+.offices strong { font-weight: 500; }
+.offices span { color: #6f6b65; }
+.offices a { margin-top: 12px; color: var(--ink); }
+
+.page-foot {
+  display: flex; flex-wrap: wrap; gap: 18px;
+  margin-top: 64px; padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-size: 11px; color: var(--mute); letter-spacing: 0;
+}
+.page-foot a { color: var(--mute); text-decoration: none; }
+.page-foot a:hover { color: var(--ink); }
+
+@media (max-width: 900px) {
+  .page { padding: 152px 24px 70px; }
+}
 
 @media (max-width: 640px) {
   .footer { left: 16px; bottom: 18px; }
   .teaser { left: 16px; right: 16px; }
+  #gl.mini { width: 140px; height: 92px; }
+  .card { width: 140px; height: 92px; }
+  .page { padding: 124px 16px 60px; }
 }
