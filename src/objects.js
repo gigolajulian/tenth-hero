@@ -158,6 +158,10 @@ export async function makeBall10() {
 /* The decal atlas carries the TP-7 branding twice: large on the face (top-left of the
    atlas) and small on the edge. Repaint both as T-10 in place, keeping the texture's
    own flipY/colorSpace settings rather than building a new one. */
+// the TODAY readout: its black panel is painted into the atlas here, and the lit
+// text on top is a separate emissive mesh retired below
+const DISPLAY_RECT = [748, 0, 272, 110];
+
 const TP7_MARKS = [
   { clear: [5, 20, 172, 74], x: 12, y: 79, size: 62, rot: 0 },
   { clear: [746, 338, 50, 92], x: 788, y: 416, size: 26, rot: -Math.PI / 2 },
@@ -175,6 +179,7 @@ function rebrand(material) {
   x.drawImage(img, 0, 0);
   x.fillStyle = '#111';
   x.textBaseline = 'alphabetic';
+  x.clearRect(...DISPLAY_RECT);
   for (const m of TP7_MARKS) {
     x.clearRect(...m.clear);
     x.save();
@@ -282,6 +287,15 @@ export async function loadRecorder(url) {
     const tris = (o.geometry.index?.count ?? 0) / 3;
     const flat = b.max.y - b.min.y < 0.1;
     const centred = Math.abs(b.min.x + b.max.x) < 0.2 && Math.abs(b.min.z + b.max.z) < 0.2;
+
+    // The TODAY readout is three stacked layers seen through a cutout in the face
+    // plate: an orange sheet at the bottom, a black backing sheet, and the lit text
+    // on top. Hiding the backing just exposes the orange, so retire the lit text and
+    // finish the backing like the body — the cutout then reads as a blank panel.
+    const atDisplay =
+      Math.abs((b.min.x + b.max.x) / 2 - 0.73) < 0.2 && Math.abs((b.min.z + b.max.z) / 2 + 0.89) < 0.2;
+    if (o.material.name === 'lum-decals' && atDisplay) o.visible = false;
+    if (o.material.name === 'Material.010') o.material = Object.assign(alu(), { roughness: 0.55 });
 
     // Only the platter turns; its seam groove is modelled into this mesh, and the
     // rebuilt disc face rides along as a child.

@@ -97,3 +97,6 @@ function render() {
 new ResizeObserver(() => app.resize()).observe(canvas);
 
 render();
+
+// handle for poking at the scene from the console
+window.__app = app;
