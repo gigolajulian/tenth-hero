@@ -295,7 +295,12 @@ export async function loadRecorder(url) {
     const atDisplay =
       Math.abs((b.min.x + b.max.x) / 2 - 0.73) < 0.2 && Math.abs((b.min.z + b.max.z) / 2 + 0.89) < 0.2;
     if (o.material.name === 'lum-decals' && atDisplay) o.visible = false;
-    if (o.material.name === 'Material.010') o.material = Object.assign(alu(), { roughness: 0.55 });
+    if (o.material.name === 'Material.010') {
+      o.material = Object.assign(alu(), { roughness: 0.55 });
+      // it sits 0.015 below the face plate's top surface, and that recess is what
+      // draws the dark outline; flush with the surface it reads as a panel line
+      o.position.y += 0.0148;
+    }
 
     // Only the platter turns; its seam groove is modelled into this mesh, and the
     // rebuilt disc face rides along as a child.
