@@ -103,8 +103,9 @@ export async function createScene(canvas, onProgress) {
 
   onProgress?.(15);
   const [statue, recorder] = await Promise.all([
-    loadStatue('/persepolis.glb'),
-    loadRecorder('/tp7.glb'),
+    // BASE_URL, not a leading slash: GitHub Pages serves this from /<repo>/
+    loadStatue(import.meta.env.BASE_URL + 'persepolis.glb'),
+    loadRecorder(import.meta.env.BASE_URL + 'tp7.glb'),
   ]);
   onProgress?.(80);
   const models = { statue, ball: await makeBall10(), recorder };
